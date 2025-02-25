@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<CodeLite_Project Name="RTS-Lab" InternalType="Console" Version="11000">
+
+<CodeLite_Project Name="RTS-Lab" InternalType="Console" Version="10.0.0">
   <Plugins>
     <Plugin Name="qmake">
       <![CDATA[00010001N0005Debug000000000000]]>
@@ -26,6 +27,7 @@
     </Extensions>
     <Topleveldir>/Users/daryl/Documents/daryl/cth/eda223_realtimesystem/TinyTimber/RTS-Lab</Topleveldir>
   </Reconciliation>
+
   <VirtualDirectory Name="driver">
     <VirtualDirectory Name="inc">
       <File Name="driver/inc/stm32f4xx_can.h"/>
@@ -61,6 +63,7 @@
   <Description/>
   <Dependencies/>
   <VirtualDirectory Name="src">
+
     <File Name="Common.h"/>
     <File Name="MusicPlayer.h"/>
     <File Name="MusicPlayer.c"/>

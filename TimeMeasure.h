@@ -7,15 +7,18 @@
 
 typedef struct {
 	Timer timer;
+	Time start;      
+    Time finish;     
+    Time diff;       
 	double values[500]; // 500 times
 	int index;
-	double maximum;
-	double average;
+	Time maximum;
+	Time average;
 	Serial *ser;
 } TimeMeasure;
 
 void startMeasure(TimeMeasure *self);
-void endMeasure(TimeMeasure *self, int times);
+void endMeasure(TimeMeasure *self);
 double getMaximum(TimeMeasure *self);
 double getAverage(TimeMeasure *self);
 

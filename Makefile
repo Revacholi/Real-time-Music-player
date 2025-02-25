@@ -13,9 +13,10 @@ MD407  = /dev/ttyUSB0
 RTSEND = $(PROJECT_DIR)/rtsend
 RTSHOW = $(PROJECT_DIR)/rtshow
 
-# if ARM GNU Toolchain is not on PATH, specify full path including trailing
-# slash, e.g. $(HOME)/Downloads/arm-gnu-toolchain/bin/
-TOOLCHAIN_PATH = 
+
+# # if ARM GNU Toolchain is not on PATH, specify full path including trailing
+# # slash, e.g. $(HOME)/Downloads/arm-gnu-toolchain/bin/
+# TOOLCHAIN_PATH =
 
 # Directories
 BUILD_DIR = $(PROJECT_DIR)/build
@@ -77,7 +78,7 @@ $(TARGET_S19): $(TARGET_ELF)
 	$(POST) $(POSTFLAGS) $< $@
 
 $(TARGET_ELF): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^ -lm
+	$(CC) -o $@ $^ $(LDFLAGS) 
 
 $(OBJS): | $(OBJ_DIRS)
 

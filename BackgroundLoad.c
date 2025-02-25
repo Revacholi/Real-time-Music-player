@@ -12,7 +12,8 @@ void load_bg(BackgroundLoad *self) {
 		//print(self->ser, "i = %d\n", i);
 	}
 
-	endMeasure(self->timeMeasure, 1);
+
+	endMeasure(self->timeMeasure);
 	
 	Time dl = self->useDeadline ? USEC(1300) : USEC(0);
 	SEND(USEC(1300), dl, self, load_bg, 0);
@@ -42,8 +43,8 @@ void stopLoad(BackgroundLoad *self, int c) {
 }
 
 
-
 // -------------------- maybe not useful, ask for ta.-----------------
+
 // set arbitrary value;
 void setValue(BackgroundLoad *self, int c) {
 	self->value = c;	

@@ -114,8 +114,9 @@ Serial sci0 = initSerial(SCI_PORT0, &app, reader);
 Can can0 = initCan(CAN_PORT0, &app, receiver);
 
 // Initialize timers and generators
-TimeMeasure timer1 = { initTimer(), {0.0}, 0, 0.0, 0.0, &sci0 };
-TimeMeasure timer2 = { initTimer(), {0.0}, 0, 0.0, 0.0, &sci0 };
+
+TimeMeasure timer1 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
+TimeMeasure timer2 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
 ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 0, &sci0, &timer1};
 BackgroundLoad backgroundLoad = {initObject(), 1000, 500, 1, 0, 0, &sci0, &timer2};
 MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0};
@@ -244,6 +245,7 @@ void dispatch(App *self, int c) {
                     if (bpm < 60 || bpm > 240) print(&sci0, "Alert: the BPM ranges from 60 to 240. It has been modified to safe range.");
                     setBPM(&musicPlayer, bpm);
                     break;
+
                 case 'y': // Calculate load WCET
                     print(&sci0, "Load WCET - Max: %dµs, Avg: %dµs\n",
                         (int)getMaximum(&timer2), (int)getAverage(&timer2));
@@ -341,6 +343,10 @@ void startApp(App *self, int arg) {
     SCI_INIT(&sci0);
 
     print(&sci0, "System Boot\n%s\n", modeInfo[DEFAULT].menuPrompt);
+
+	// startMeasure(self->timeMeasure, 1);
+	
+	// endMeasure(self->timeMeasure, 1);
 
     msg.msgId = 1;
     msg.nodeId = 1;

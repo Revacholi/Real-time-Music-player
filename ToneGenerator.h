@@ -1,3 +1,4 @@
+
 #ifndef TONE_H__
 #define TONE_H__
 
@@ -26,5 +27,5 @@ void setMuted(ToneGenerator *self, int c);
 void setVolumn(ToneGenerator *self, int c);
 void setUseDeadline(ToneGenerator *self, int c);
 void setPeriod(ToneGenerator *self, int c);
-
+void measureTone(ToneGenerator *self);
 #endif

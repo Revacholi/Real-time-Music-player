@@ -1,6 +1,14 @@
 {
     "files.associations": {
+<<<<<<< HEAD
         "__node_handle": "c",
         "stm32f4xx_rcc.h": "c"
+=======
+        "cantinytimber.h": "c",
+        "tonegenerator.h": "c",
+        "stdio.h": "c",
+        "timemeasure.h": "c",
+        "scitinytimber.h": "c"
+>>>>>>> origin/main
     }
 }
