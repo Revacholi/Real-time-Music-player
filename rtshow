@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+if [ $# -eq 1 ]; then
+  test $(uname) = "Darwin" &&
+    F="-f" ||
+    F="-F"
+
+  stty $F $1 115200 raw -echo -parenb cs8 -cstopb &&
+    cat $1 &
+  while read -n 1 -s; do
+    test $REPLY &&
+      printf %c $REPLY > $1 ||
+      printf "\n" > $1
+  done
+else
+  echo "Usage:   rtshow <conn>"
+  echo "Example: rtshow /dev/ttyUSB0"
+fi

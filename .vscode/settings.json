@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "__node_handle": "c",
+        "stm32f4xx_rcc.h": "c"
+    }
+}
