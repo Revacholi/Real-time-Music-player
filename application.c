@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+#include <limits.h>
+#include <ctype.h>
 
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
@@ -78,7 +80,7 @@ typedef struct {
     Object super;
     int count;
     char c;
-    Request request;
+    Request *request;
     enum Mode currentMode;  
 } App;
 
@@ -107,7 +109,8 @@ int getFrequency(int key);
 Storage storageForThreeHistory = { initObject(), {0}, 3, 0, 0, -9999, 9999, 0};
 
 // Initialize application state
-App app = { initObject(), 0, 'X', { {0}, 0 }, DEFAULT };
+Request req = {{0}, 0};
+App app = { initObject(), 0, 'X', &req, DEFAULT };
 
 // Initialize serial and CAN communication
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
@@ -117,7 +120,7 @@ Can can0 = initCan(CAN_PORT0, &app, receiver);
 
 TimeMeasure timer1 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
 TimeMeasure timer2 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
-ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 0, &sci0, &timer1};
+ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 0, 0, &sci0, &timer1};
 BackgroundLoad backgroundLoad = {initObject(), 1000, 500, 1, 0, 0, &sci0, &timer2};
 MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0};
 
@@ -222,85 +225,97 @@ void threeHistory(Request *req, Storage *sto, int c) {
 
 // Function to get request number from buffer
 int getRequestNumFromBuffer(App *self) {
-    self->request.inputBuffer[self->request.inputBufferIndex] = '\0';
-    int num = atoi(self->request.inputBuffer);
-    self->request.inputBufferIndex = 0;
+    self->request->inputBuffer[self->request->inputBufferIndex] = '\0';
+    int num = atoi(self->request->inputBuffer);
+    self->request->inputBufferIndex = 0;
     return num;
 }
 
-// Function to dispatch commands based on current mode
-void dispatch(App *self, int c) {
-    switch (self->currentMode) {
-        case CONDUCTOR:
-            switch(c) {
-                case 'p': // play music
-                    SEND((Time) 0, (Time) 0, &musicPlayer, startPlay, 0);
-                    break;
-                case 'k': // change key
-                    int key = getRequestNumFromBuffer(self);    
-                    setKey(&musicPlayer, key);
-                    break;
-                case 'o': // change BPM(tempo).
-                    int bpm = getRequestNumFromBuffer(self); 
-                    if (bpm < 60 || bpm > 240) print(&sci0, "Alert: the BPM ranges from 60 to 240. It has been modified to safe range.");
-                    setBPM(&musicPlayer, bpm);
-                    break;
+// Function to dispatch commands
+void dispatch(App *self, int c, int num) {
 
-                case 'y': // Calculate load WCET
-                    print(&sci0, "Load WCET - Max: %dµs, Avg: %dµs\n",
-                        (int)getMaximum(&timer2), (int)getAverage(&timer2));
-                    break;
-                case 't': // Calculate tone generator WCET
-                    print(&sci0, "Tone WCET - Max: %dµs, Avg: %dµs\n",
-                        (int)getMaximum(&timer1), (int)getAverage(&timer1));
-                    break;
-                case 'l': AFTER(USEC(1300), &backgroundLoad, load_bg, 0); break;  // Start background load
-                case 's': stopLoad(&backgroundLoad, 1); break; // Stop background load
-                case 'i': increaseLoad(&backgroundLoad); break;  
-                case 'd': decreaseLoad(&backgroundLoad); break;
-                case 'm': setMuted(&toneGenerator, !toneGenerator.muted); break;
-                case 'v': {
-                    int vol = getRequestNumFromBuffer(self);
-                    setVolumn(&toneGenerator, vol);   // Set volume
-                    break;
-                }
-                case 'g': AFTER(USEC(toneGenerator.period), &toneGenerator, playTone, 0); break;  // Generate 1kHz tone
-                case 'D': {
-                    int useDeadline = !toneGenerator.useDeadline;
-                    setUseDeadline(&toneGenerator, useDeadline);
-                    setUseDeadlineForLoad(&backgroundLoad, useDeadline);
-                    break;
-                }
-                case 'K': {
-                    int key = getRequestNumFromBuffer(self);   // Brother John periods
-                    getPeriodsByChangingKey(&sci0, key);       // Get periods by changing key
-                    break;
-                }
-                case 'q': // Quit to mode selection
-                    self->currentMode = DEFAULT;
-                    print(&sci0, "\n%s\n", modeInfo[DEFAULT].menuPrompt);
-                    break;
-                default:
-                    threeHistory(&self->request, &storageForThreeHistory, c);
-                    break;
-            }
+    switch(c) {
+        case 'S': // stop music
+            SEND((Time) 0, (Time) 0, &musicPlayer, stopPlay, 0);
             break;
-        
-        case MUSICIAN:
-            switch(c) {
-                case 'q': // Quit to mode selection
-                    self->currentMode = DEFAULT;
-                    print(&sci0, "\n%s\n", modeInfo[DEFAULT].menuPrompt);
-                    break;
-                // TODO: Add musician mode commands
-                default:
-                    break;
-            }
+        case 'p': // play music
+            SEND((Time) 0, (Time) 0, &musicPlayer, startPlay, 0);
             break;
-        
+        case 'k': // change key
+            // int key = getRequestNumFromBuffer(self);
+            int key = num;
+            setKey(&musicPlayer, key);
+            break;
+        case 'o': // change BPM(tempo).
+            // int bpm = getRequestNumFromBuffer(self);
+            int bpm = num;
+
+            if (bpm < 60 || bpm > 240) print(&sci0, "Alert: the BPM ranges from 60 to 240. It has been modified to safe range.");
+            setBPM(&musicPlayer, bpm);
+            break;
+
+        case 'y': // Calculate load WCET
+            print(&sci0, "Load WCET - Max: %dµs, Avg: %dµs\n",
+                (int)getMaximum(&timer2), (int)getAverage(&timer2));
+            break;
+        case 't': // Calculate tone generator WCET
+            print(&sci0, "Tone WCET - Max: %dµs, Avg: %dµs\n",
+                (int)getMaximum(&timer1), (int)getAverage(&timer1));
+            break;
+        case 'l': AFTER(USEC(1300), &backgroundLoad, load_bg, 0); break;  // Start background load
+        case 's': stopLoad(&backgroundLoad, 1); break; // Stop background load
+        case 'i': increaseLoad(&backgroundLoad); break;  
+        case 'd': decreaseLoad(&backgroundLoad); break;
+        case 'm': setMuted(&toneGenerator, !toneGenerator.muted); break;
+        case 'v': {
+            // int vol = getRequestNumFromBuffer(self);
+            int vol = num;
+
+            setVolumn(&toneGenerator, vol);   // Set volume
+            break;
+        }
+        case 'g': AFTER(USEC(toneGenerator.period), &toneGenerator, playTone, 0); break;  // Generate 1kHz tone
+        case 'D': {
+            int useDeadline = !toneGenerator.useDeadline;
+            setUseDeadline(&toneGenerator, useDeadline);
+            setUseDeadlineForLoad(&backgroundLoad, useDeadline);
+            break;
+        }
+        case 'K': {
+            // int key = getRequestNumFromBuffer(self);   // Brother John periods
+            int key = num;
+            getPeriodsByChangingKey(&sci0, key);       // Get periods by changing key
+            break;
+        }
+        case 'q': // Quit to mode selection
+            self->currentMode = DEFAULT;
+            print(&sci0, "\n%s\n", modeInfo[DEFAULT].menuPrompt);
+            break;
         default:
+            threeHistory(self->request, &storageForThreeHistory, c);
             break;
     }
+}
+
+void sendCANMessage(App *self, int can, char c) {
+    CANMsg msg;
+    msg.msgId = 1;
+    msg.nodeId = 1;
+    int length = 0;
+    if (can != INT_MIN) {
+        // why 7? because the length of a buffer in CAN message is just 8 bytes;
+        for (int i = 0; i < 7; i++) {
+            if (self->request->inputBuffer[i] == '\0') {
+                break;
+            }
+            msg.buff[i] = self->request->inputBuffer[i];
+            length++;
+        }
+    }
+
+    msg.buff[length] = c;
+    msg.length = length++;
+    CAN_SEND(&can0, &msg);
 }
 
 // Function to handle serial input
@@ -321,8 +336,27 @@ void reader(App *self, int c) {
         } else {
             print(&sci0, "Invalid mode! Enter 1 or 2\n");
         }
-    } else {
-        dispatch(self, c);
+    } else if (self->currentMode == CONDUCTOR) {
+        // get whole command.
+        int num = INT_MIN;
+        if (c == '-' || (c <= '9' && c>= '0')) {
+            self->request->inputBuffer[self->request->inputBufferIndex++] = c;
+        } else {
+            num = getRequestNumFromBuffer(self);
+            dispatch(self, c, num);
+            sendCANMessage(self, num, c);
+        }
+
+    } else if (self->currentMode == MUSICIAN) {
+        // get command from keyboard but not directly control. send CAN msg.
+        int num = INT_MIN;
+        if (c == '-' || (c <= '9' && c>= '0')) {
+            self->request->inputBuffer[self->request->inputBufferIndex++] = c;
+        } else {
+            num = getRequestNumFromBuffer(self);
+            sendCANMessage(self, num, c);
+        }
+
     }
 }
 
@@ -332,6 +366,42 @@ void receiver(App *self, int unused) {
     CAN_RECEIVE(&can0, &msg);
     SCI_WRITE(&sci0, "Can msg received: ");
     SCI_WRITE(&sci0, msg.buff);
+
+    // get command from can message.
+    
+    int num = INT_MIN;
+    char c = ' ';
+    if (msg.length != 0) {
+        if (msg.length == 1) {
+            c = msg.buff[0];
+        } else {
+            c = msg.buff[msg.length - 1];
+            char msgBuff[8] = {};
+            for (int i = 0; i < msg.length - 1; i++) {
+                msgBuff[i] = msg.buff[i];
+            }
+            msgBuff[msg.length - 1] = '\0';
+            num = atoi(msgBuff);
+        }
+    }
+
+    // only musician mode can be controlled.
+    if (self->currentMode == DEFAULT) {
+        int modeValue = c - '0';
+        enum Mode newMode = getModeByValue(modeValue);
+        
+        if (newMode != DEFAULT) {
+            self->currentMode = newMode;
+            print(&sci0, "\nEntered %s Mode\n%s\n",
+                modeInfo[newMode].name,
+                modeInfo[newMode].menuPrompt);
+        } else {
+            print(&sci0, "Invalid mode! Enter 1 or 2\n");
+        }
+    } else if (self->currentMode == MUSICIAN) {
+        // need to control.
+        dispatch(self, c, num);
+    }
 }
 
 // Function to start the application

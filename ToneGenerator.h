@@ -1,4 +1,3 @@
-
 #ifndef TONE_H__
 #define TONE_H__
 
@@ -16,6 +15,7 @@ typedef struct {
 	int flag;  // dac flag 1-vol 0-0
 	int muted; // 1-not muted. 0-muted
 	int useDeadline; // 0-don't use 1-use
+	int stop;
 	
 	Serial *ser;
 	TimeMeasure *timeMeasure;
@@ -23,6 +23,7 @@ typedef struct {
 } ToneGenerator;
 
 void playTone(ToneGenerator *);
+void setStopTone(ToneGenerator *self, int c);
 void setMuted(ToneGenerator *self, int c);
 void setVolumn(ToneGenerator *self, int c);
 void setUseDeadline(ToneGenerator *self, int c);

@@ -1,4 +1,5 @@
-
+#ifndef MUSIC_H__
+#define MUSIC_H__
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
 #include "canTinyTimber.h"
@@ -12,13 +13,17 @@ typedef struct {
     int silence; // default value: 50, unit:ms
     int key; // the changing key value.
     int index; // music frequency index
+    int stop;
     
     ToneGenerator *toneGenerator;
 } MusicPlayer;
 
+void setStopMusic(MusicPlayer *self, int c);
 void startPlay(MusicPlayer *self);
 void play(MusicPlayer *self);
 void setBPM(MusicPlayer *self, int c);
 void setBasicBeatLength(MusicPlayer *self, int c);
 void setSilence(MusicPlayer *self, int c);
 void setKey(MusicPlayer *self, int c);
+void stopPlay(MusicPlayer *self);
+#endif
