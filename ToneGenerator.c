@@ -7,6 +7,9 @@
 void playTone(ToneGenerator *self) {
 	int8_t *DAC_REG = (int8_t *)0x4000741C;
 
+	if (self->mutedByUser == 0) {
+		*DAC_REG = 0;
+	} else {
         // mute check
         if (self->muted == 0) {
         	*DAC_REG = 0;
@@ -19,6 +22,7 @@ void playTone(ToneGenerator *self) {
         	//print(self->ser, "regValue: %d", *DAC_REG);
         	self->flag = !self->flag;
         }
+	  }
 
 		Time dl = self->useDeadline ? USEC(100) : USEC(0);
 		SEND(USEC(self->period), dl, self, playTone, 0);
@@ -64,6 +68,10 @@ void setMuted(ToneGenerator *self, int c) {
  	self->muted = c;
 }
 
+void setUserMuted(ToneGenerator *self, int c) {
+	self->mutedByUser = c;
+}
+
 void setVolumn(ToneGenerator *self, int c) {
   	self->volumn = c;
 	if (self->volumn < 1) self->volumn = 1;
@@ -73,11 +81,20 @@ void setVolumn(ToneGenerator *self, int c) {
 
 void setUseDeadline(ToneGenerator *self, int c) {
 	self->useDeadline = c;
-<<<<<<< HEAD
 }
 
 void setPeriod(ToneGenerator *self, int c) {
 	self->period = c;
-=======
->>>>>>> origin/main
+}
+
+int getMutedByUser(ToneGenerator *self) {
+    return self->mutedByUser;
+}
+
+int getPeriod(ToneGenerator *self) {
+    return self->period;
+}
+
+int getUseDeadline(ToneGenerator *self) {
+    return self->useDeadline;
 }

@@ -1,10 +1,10 @@
-
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
 #include "canTinyTimber.h"
 #include "Print.h"
 #include "ToneGenerator.h"
 #include "Common.h"
+
 typedef struct {
     Object super;
     int tempo; // BPM.  default value: 120  unit: bpm.
@@ -13,7 +13,10 @@ typedef struct {
     int key; // the changing key value.
     int index; // music frequency index
     
+    Serial *sci0;
     ToneGenerator *toneGenerator;
+
+    
 } MusicPlayer;
 
 void startPlay(MusicPlayer *self);

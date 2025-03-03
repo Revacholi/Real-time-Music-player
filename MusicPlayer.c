@@ -12,11 +12,11 @@ void play(MusicPlayer *self) {
     int beatLength = self->basicBeatLength * brotherJohnBeatUnit[self->index];
 
     // set period to tone generator.
-    SEND(0,0, self->toneGenerator, setPeriod, period); 
+    SEND(0, 0, self->toneGenerator, setPeriod, period); 
     // unmute immediately in order to play sound.
-    SEND(0,0, self->toneGenerator, setMuted, 1); 
+    SEND(0, 0, self->toneGenerator, setMuted, 1); 
     // set mute to tone generator after playing several length.
-    SEND(MSEC(beatLength - self->silence),0, self->toneGenerator, setMuted ,0);
+    SEND(MSEC(beatLength - self->silence), 0, self->toneGenerator, setMuted ,0);
 
     // if to the end. replay
     if(self->index == 31) {
@@ -34,7 +34,7 @@ void setBPM(MusicPlayer *self, int c) {
     if (c < 60) c = 60;
     self->tempo = c;
     // get beat length
-    int length = 60 / self->tempo * 1000;
+    int length = 60 * 1000 / self->tempo;
     setBasicBeatLength(self, length);
 }
 
@@ -47,5 +47,7 @@ void setSilence(MusicPlayer *self, int c) {
 }
 
 void setKey(MusicPlayer *self, int c) {
+    if (c > 5) c = 5;
+    if (c < -5) c = -5;
     self->key = c;
 }

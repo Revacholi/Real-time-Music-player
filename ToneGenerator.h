@@ -15,6 +15,7 @@ typedef struct {
 	int period;
 	int flag;  // dac flag 1-vol 0-0
 	int muted; // 1-not muted. 0-muted
+	int mutedByUser; // 1-not muted. 0-muted
 	int useDeadline; // 0-don't use 1-use
 	
 	Serial *ser;
@@ -24,8 +25,14 @@ typedef struct {
 
 void playTone(ToneGenerator *);
 void setMuted(ToneGenerator *self, int c);
+void setUserMuted(ToneGenerator *self, int c);	
 void setVolumn(ToneGenerator *self, int c);
 void setUseDeadline(ToneGenerator *self, int c);
 void setPeriod(ToneGenerator *self, int c);
 void measureTone(ToneGenerator *self);
+
+int getMutedByUser(ToneGenerator *self);
+int getPeriod(ToneGenerator *self);
+int getUseDeadline(ToneGenerator *self);
+
 #endif

@@ -13,6 +13,7 @@
 #include "ToneGenerator.h"
 #include "BackgroundLoad.h"
 #include "MusicPlayer.h"
+#include "Common.h"
 
 // Enumeration for different modes
 enum Mode { DEFAULT = 0, CONDUCTOR = 1, MUSICIAN = 2 };
@@ -49,6 +50,9 @@ const ModeInfo modeInfo[] = {
         "12. t - Tone generator WCET\n"
         "13. y - Load WCET\n"
         "14. q - Quit to mode selection\n"
+        "15. p - Play music\n"
+        "16. k - Change key\n"
+        "17. o - Change BPM\n"
     },
     [MUSICIAN] = {
         MUSICIAN,
@@ -117,15 +121,9 @@ Can can0 = initCan(CAN_PORT0, &app, receiver);
 
 TimeMeasure timer1 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
 TimeMeasure timer2 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
-ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 0, &sci0, &timer1};
+ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 1, 0, &sci0, &timer1};
 BackgroundLoad backgroundLoad = {initObject(), 1000, 500, 1, 0, 0, &sci0, &timer2};
-MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0};
-
-// Array to hold frequencies
-int frequencies[25]; // -10 -- 14
-const int offset = 10;
-const int brotherJohnFrequencyIndices[32] = {0,2,4,0,0,2,4,0,4,5,7,4,5,7,7,9,7,5,4,0,7,9,7,5,4,0,0,-5,0,0,-5,0};
-const float brotherJohnBeatUnit[32] = {1,1,1,1,1,1,1,1,1,1,2,1,1,2,0.5,0.5,0.5,0.5,1,1,0.5,0.5,0.5,0.5,1,1,1,1,2,1,1,2};
+MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0, &sci0, &toneGenerator};
 
 
 // Function to calculate frequency based on key
@@ -136,7 +134,7 @@ int getFrequency(int key) {
 
 // Function to initialize frequencies
 void initial() {
-    for(int i = -10; i < 14; i++) {
+    for(int i = -10; i <= 14; i++) {
         int index = i + offset;
         frequencies[index] = getFrequency(i);
     }
@@ -238,37 +236,45 @@ void dispatch(App *self, int c) {
                     break;
                 case 'k': // change key
                     int key = getRequestNumFromBuffer(self);    
-                    setKey(&musicPlayer, key);
+                    if (key < -5 || key > 5) print(&sci0, "Alert: the key ranges from -5 to 5. It has been modified to safe range.");
+                    SYNC(&musicPlayer, setKey, key);
                     break;
                 case 'o': // change BPM(tempo).
                     int bpm = getRequestNumFromBuffer(self); 
                     if (bpm < 60 || bpm > 240) print(&sci0, "Alert: the BPM ranges from 60 to 240. It has been modified to safe range.");
-                    setBPM(&musicPlayer, bpm);
+                    SYNC(&musicPlayer, setBPM, bpm);
                     break;
-
                 case 'y': // Calculate load WCET
                     print(&sci0, "Load WCET - Max: %dµs, Avg: %dµs\n",
-                        (int)getMaximum(&timer2), (int)getAverage(&timer2));
+                        (int)SYNC(&timer2, getMaximum, 0), 
+                        (int)SYNC(&timer2, getAverage, 0));
                     break;
                 case 't': // Calculate tone generator WCET
                     print(&sci0, "Tone WCET - Max: %dµs, Avg: %dµs\n",
-                        (int)getMaximum(&timer1), (int)getAverage(&timer1));
+                        (int)SYNC(&timer1, getMaximum, 0), 
+                        (int)SYNC(&timer1, getAverage, 0));
                     break;
                 case 'l': AFTER(USEC(1300), &backgroundLoad, load_bg, 0); break;  // Start background load
-                case 's': stopLoad(&backgroundLoad, 1); break; // Stop background load
-                case 'i': increaseLoad(&backgroundLoad); break;  
-                case 'd': decreaseLoad(&backgroundLoad); break;
-                case 'm': setMuted(&toneGenerator, !toneGenerator.muted); break;
+                case 's': SYNC(&backgroundLoad, stopLoad, 1); break; // Stop background load
+                case 'i': SYNC(&backgroundLoad, increaseLoad, 0); break;  
+                case 'd': SYNC(&backgroundLoad, decreaseLoad, 0); break;
+                case 'm': 
+                    int currentMuted = SYNC(&toneGenerator, getMutedByUser, 0);
+                    SYNC(&toneGenerator, setUserMuted, !currentMuted);
+                    break;
                 case 'v': {
                     int vol = getRequestNumFromBuffer(self);
-                    setVolumn(&toneGenerator, vol);   // Set volume
+                    SYNC(&toneGenerator, setVolumn, vol);   // Set volume
                     break;
                 }
-                case 'g': AFTER(USEC(toneGenerator.period), &toneGenerator, playTone, 0); break;  // Generate 1kHz tone
+                case 'g': 
+                    int period = SYNC(&toneGenerator, getPeriod, 0);
+                    AFTER(USEC(period), &toneGenerator, measureTone, 0);
+                    break;  // Generate 1kHz tone
                 case 'D': {
-                    int useDeadline = !toneGenerator.useDeadline;
-                    setUseDeadline(&toneGenerator, useDeadline);
-                    setUseDeadlineForLoad(&backgroundLoad, useDeadline);
+                    int currentDeadline = SYNC(&toneGenerator, getUseDeadline, 0);
+                    SYNC(&toneGenerator, setUseDeadline, !currentDeadline);
+                    SYNC(&backgroundLoad, setUseDeadlineForLoad, !currentDeadline);
                     break;
                 }
                 case 'K': {
