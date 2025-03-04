@@ -124,9 +124,9 @@ Can can0 = initCan(CAN_PORT0, &app, receiver);
 
 TimeMeasure timer1 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
 TimeMeasure timer2 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
-ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 1, 0, &sci0, &timer1};
+ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 1, 0, 0, &sci0, &timer1};
 BackgroundLoad backgroundLoad = {initObject(), 1000, 500, 1, 0, 0, &sci0, &timer2};
-MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0, &sci0, &toneGenerator};
+MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0, 0, &sci0, &toneGenerator};
 
 
 // Function to calculate frequency based on key
@@ -230,7 +230,7 @@ int getRequestNumFromBuffer(App *self) {
 }
 
 // Function to dispatch commands based on current mode
-void dispatch(App *self, int c) {
+void dispatch(App *self, int c, int num) {
     switch (self->currentMode) {
         case CONDUCTOR:
             switch(c) {
@@ -241,7 +241,8 @@ void dispatch(App *self, int c) {
                     SEND((Time) 0, (Time) 0, &musicPlayer, startPlay, 0);
                     break;
                 case 'k': // change key
-                    int key = getRequestNumFromBuffer(self);    
+                    //int key = getRequestNumFromBuffer(self);   
+                    int key = num; 
                     if (key < -5 || key > 5) print(&sci0, "Alert: the key ranges from -5 to 5. It has been modified to safe range.");
                     SYNC(&musicPlayer, setKey, key);
                     break;
@@ -293,7 +294,7 @@ void dispatch(App *self, int c) {
                     print(&sci0, "\n%s\n", modeInfo[DEFAULT].menuPrompt);
                     break;
                 default:
-                    threeHistory(&self->request, &storageForThreeHistory, c);
+                    threeHistory(self->request, &storageForThreeHistory, c);
                     break;
             }
             break;

@@ -21,10 +21,8 @@ void playTone(ToneGenerator *self) {
         	//print(self->ser, "regValue: %d", *DAC_REG);
         	self->flag = !self->flag;
         }
-	  }
-
-		Time dl = self->useDeadline ? USEC(100) : USEC(0);
-		SEND(USEC(self->period), dl, self, playTone, 0);
+	  	Time dl = self->useDeadline ? USEC(100) : USEC(0);
+	  	SEND(USEC(self->period), dl, self, playTone, 0);
 }
 
 void measureTone(ToneGenerator *self) {
