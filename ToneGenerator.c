@@ -6,10 +6,9 @@
 
 void playTone(ToneGenerator *self) {
 	int8_t *DAC_REG = (int8_t *)0x4000741C;
-
-	if (self->mutedByUser == 0) {
-		*DAC_REG = 0;
-	} else {
+		if (self->stop) {
+			return;
+		}
         // mute check
         if (self->muted == 0) {
         	*DAC_REG = 0;
@@ -97,4 +96,8 @@ int getPeriod(ToneGenerator *self) {
 
 int getUseDeadline(ToneGenerator *self) {
     return self->useDeadline;
+}
+
+void setStopTone(ToneGenerator *self, int c) {
+	self->stop = c;
 }

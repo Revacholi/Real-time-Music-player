@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+#include <limits.h>
+#include <ctype.h>
 
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
@@ -82,7 +84,7 @@ typedef struct {
     Object super;
     int count;
     char c;
-    Request request;
+    Request *request;
     enum Mode currentMode;  
 } App;
 
@@ -111,7 +113,8 @@ int getFrequency(int key);
 Storage storageForThreeHistory = { initObject(), {0}, 3, 0, 0, -9999, 9999, 0};
 
 // Initialize application state
-App app = { initObject(), 0, 'X', { {0}, 0 }, DEFAULT };
+Request req = {{0}, 0};
+App app = { initObject(), 0, 'X', &req, DEFAULT };
 
 // Initialize serial and CAN communication
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
@@ -220,9 +223,9 @@ void threeHistory(Request *req, Storage *sto, int c) {
 
 // Function to get request number from buffer
 int getRequestNumFromBuffer(App *self) {
-    self->request.inputBuffer[self->request.inputBufferIndex] = '\0';
-    int num = atoi(self->request.inputBuffer);
-    self->request.inputBufferIndex = 0;
+    self->request->inputBuffer[self->request->inputBufferIndex] = '\0';
+    int num = atoi(self->request->inputBuffer);
+    self->request->inputBufferIndex = 0;
     return num;
 }
 
@@ -231,6 +234,9 @@ void dispatch(App *self, int c) {
     switch (self->currentMode) {
         case CONDUCTOR:
             switch(c) {
+                case 'S': // stop music
+                    SEND((Time) 0, (Time) 0, &musicPlayer, stopPlay, 0);
+                    break;
                 case 'p': // play music
                     SEND((Time) 0, (Time) 0, &musicPlayer, startPlay, 0);
                     break;
@@ -291,22 +297,28 @@ void dispatch(App *self, int c) {
                     break;
             }
             break;
-        
-        case MUSICIAN:
-            switch(c) {
-                case 'q': // Quit to mode selection
-                    self->currentMode = DEFAULT;
-                    print(&sci0, "\n%s\n", modeInfo[DEFAULT].menuPrompt);
-                    break;
-                // TODO: Add musician mode commands
-                default:
-                    break;
-            }
-            break;
-        
-        default:
-            break;
     }
+}
+
+void sendCANMessage(App *self, int can, char c) {
+    CANMsg msg;
+    msg.msgId = 1;
+    msg.nodeId = 1;
+    int length = 0;
+    if (can != INT_MIN) {
+        // why 7? because the length of a buffer in CAN message is just 8 bytes;
+        for (int i = 0; i < 7; i++) {
+            if (self->request->inputBuffer[i] == '\0') {
+                break;
+            }
+            msg.buff[i] = self->request->inputBuffer[i];
+            length++;
+        }
+    }
+
+    msg.buff[length] = c;
+    msg.length = length++;
+    CAN_SEND(&can0, &msg);
 }
 
 // Function to handle serial input
@@ -327,8 +339,27 @@ void reader(App *self, int c) {
         } else {
             print(&sci0, "Invalid mode! Enter 1 or 2\n");
         }
-    } else {
-        dispatch(self, c);
+    } else if (self->currentMode == CONDUCTOR) {
+        // get whole command.
+        int num = INT_MIN;
+        if (c == '-' || (c <= '9' && c>= '0')) {
+            self->request->inputBuffer[self->request->inputBufferIndex++] = c;
+        } else {
+            num = getRequestNumFromBuffer(self);
+            dispatch(self, c, num);
+            sendCANMessage(self, num, c);
+        }
+
+    } else if (self->currentMode == MUSICIAN) {
+        // get command from keyboard but not directly control. send CAN msg.
+        int num = INT_MIN;
+        if (c == '-' || (c <= '9' && c>= '0')) {
+            self->request->inputBuffer[self->request->inputBufferIndex++] = c;
+        } else {
+            num = getRequestNumFromBuffer(self);
+            sendCANMessage(self, num, c);
+        }
+
     }
 }
 
@@ -338,6 +369,42 @@ void receiver(App *self, int unused) {
     CAN_RECEIVE(&can0, &msg);
     SCI_WRITE(&sci0, "Can msg received: ");
     SCI_WRITE(&sci0, msg.buff);
+
+    // get command from can message.
+    
+    int num = INT_MIN;
+    char c = ' ';
+    if (msg.length != 0) {
+        if (msg.length == 1) {
+            c = msg.buff[0];
+        } else {
+            c = msg.buff[msg.length - 1];
+            char msgBuff[8] = {};
+            for (int i = 0; i < msg.length - 1; i++) {
+                msgBuff[i] = msg.buff[i];
+            }
+            msgBuff[msg.length - 1] = '\0';
+            num = atoi(msgBuff);
+        }
+    }
+
+    // only musician mode can be controlled.
+    if (self->currentMode == DEFAULT) {
+        int modeValue = c - '0';
+        enum Mode newMode = getModeByValue(modeValue);
+        
+        if (newMode != DEFAULT) {
+            self->currentMode = newMode;
+            print(&sci0, "\nEntered %s Mode\n%s\n",
+                modeInfo[newMode].name,
+                modeInfo[newMode].menuPrompt);
+        } else {
+            print(&sci0, "Invalid mode! Enter 1 or 2\n");
+        }
+    } else if (self->currentMode == MUSICIAN) {
+        // need to control.
+        dispatch(self, c, num);
+    }
 }
 
 // Function to start the application
