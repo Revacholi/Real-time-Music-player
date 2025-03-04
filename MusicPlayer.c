@@ -43,7 +43,7 @@ void play(MusicPlayer *self) {
 
 void stopPlay(MusicPlayer *self) {
     SYNC(self, setStopMusic, 1);
-    SYNC(self->toneGenerator, setStopTone, 0);
+    SYNC(self->toneGenerator, setStopTone, 1);
 }
 
 

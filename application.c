@@ -231,72 +231,68 @@ int getRequestNumFromBuffer(App *self) {
 
 // Function to dispatch commands based on current mode
 void dispatch(App *self, int c, int num) {
-    switch (self->currentMode) {
-        case CONDUCTOR:
-            switch(c) {
-                case 'S': // stop music
-                    SEND((Time) 0, (Time) 0, &musicPlayer, stopPlay, 0);
-                    break;
-                case 'p': // play music
-                    SEND((Time) 0, (Time) 0, &musicPlayer, startPlay, 0);
-                    break;
-                case 'k': // change key
-                    //int key = getRequestNumFromBuffer(self);   
-                    int key = num; 
-                    if (key < -5 || key > 5) print(&sci0, "Alert: the key ranges from -5 to 5. It has been modified to safe range.");
-                    SYNC(&musicPlayer, setKey, key);
-                    break;
-                case 'o': // change BPM(tempo).
-                    int bpm = getRequestNumFromBuffer(self); 
-                    if (bpm < 60 || bpm > 240) print(&sci0, "Alert: the BPM ranges from 60 to 240. It has been modified to safe range.");
-                    SYNC(&musicPlayer, setBPM, bpm);
-                    break;
-                case 'y': // Calculate load WCET
-                    print(&sci0, "Load WCET - Max: %dµs, Avg: %dµs\n",
-                        (int)SYNC(&timer2, getMaximum, 0), 
-                        (int)SYNC(&timer2, getAverage, 0));
-                    break;
-                case 't': // Calculate tone generator WCET
-                    print(&sci0, "Tone WCET - Max: %dµs, Avg: %dµs\n",
-                        (int)SYNC(&timer1, getMaximum, 0), 
-                        (int)SYNC(&timer1, getAverage, 0));
-                    break;
-                case 'l': AFTER(USEC(1300), &backgroundLoad, load_bg, 0); break;  // Start background load
-                case 's': SYNC(&backgroundLoad, stopLoad, 1); break; // Stop background load
-                case 'i': SYNC(&backgroundLoad, increaseLoad, 0); break;  
-                case 'd': SYNC(&backgroundLoad, decreaseLoad, 0); break;
-                case 'm': 
-                    int currentMuted = SYNC(&toneGenerator, getMutedByUser, 0);
-                    SYNC(&toneGenerator, setUserMuted, !currentMuted);
-                    break;
-                case 'v': {
-                    int vol = getRequestNumFromBuffer(self);
-                    SYNC(&toneGenerator, setVolumn, vol);   // Set volume
-                    break;
-                }
-                case 'g': 
-                    int period = SYNC(&toneGenerator, getPeriod, 0);
-                    AFTER(USEC(period), &toneGenerator, measureTone, 0);
-                    break;  // Generate 1kHz tone
-                case 'D': {
-                    int currentDeadline = SYNC(&toneGenerator, getUseDeadline, 0);
-                    SYNC(&toneGenerator, setUseDeadline, !currentDeadline);
-                    SYNC(&backgroundLoad, setUseDeadlineForLoad, !currentDeadline);
-                    break;
-                }
-                case 'K': {
-                    int key = getRequestNumFromBuffer(self);   // Brother John periods
-                    getPeriodsByChangingKey(&sci0, key);       // Get periods by changing key
-                    break;
-                }
-                case 'q': // Quit to mode selection
-                    self->currentMode = DEFAULT;
-                    print(&sci0, "\n%s\n", modeInfo[DEFAULT].menuPrompt);
-                    break;
-                default:
-                    threeHistory(self->request, &storageForThreeHistory, c);
-                    break;
-            }
+    switch(c) {
+        case 'S': // stop music
+            SEND((Time) 0, (Time) 0, &musicPlayer, stopPlay, 0);
+            break;
+        case 'p': // play music
+            SEND((Time) 0, (Time) 0, &musicPlayer, startPlay, 0);
+            break;
+        case 'k': // change key
+            //int key = getRequestNumFromBuffer(self);   
+            int key = num; 
+            if (key < -5 || key > 5) print(&sci0, "Alert: the key ranges from -5 to 5. It has been modified to safe range.");
+            SYNC(&musicPlayer, setKey, key);
+            break;
+        case 'o': // change BPM(tempo).
+            int bpm = num;
+            if (bpm < 60 || bpm > 240) print(&sci0, "Alert: the BPM ranges from 60 to 240. It has been modified to safe range.");
+            SYNC(&musicPlayer, setBPM, bpm);
+            break;
+        case 'y': // Calculate load WCET
+            print(&sci0, "Load WCET - Max: %dµs, Avg: %dµs\n",
+                (int)SYNC(&timer2, getMaximum, 0), 
+                (int)SYNC(&timer2, getAverage, 0));
+            break;
+        case 't': // Calculate tone generator WCET
+            print(&sci0, "Tone WCET - Max: %dµs, Avg: %dµs\n",
+                (int)SYNC(&timer1, getMaximum, 0), 
+                (int)SYNC(&timer1, getAverage, 0));
+            break;
+        case 'l': AFTER(USEC(1300), &backgroundLoad, load_bg, 0); break;  // Start background load
+        case 's': SYNC(&backgroundLoad, stopLoad, 1); break; // Stop background load
+        case 'i': SYNC(&backgroundLoad, increaseLoad, 0); break;  
+        case 'd': SYNC(&backgroundLoad, decreaseLoad, 0); break;
+        case 'm': 
+            int currentMuted = SYNC(&toneGenerator, getMutedByUser, 0);
+            SYNC(&toneGenerator, setUserMuted, !currentMuted);
+            break;
+        case 'v': {
+            int vol = num;
+            SYNC(&toneGenerator, setVolumn, vol);   // Set volume
+            break;
+        }
+        case 'g': 
+            int period = SYNC(&toneGenerator, getPeriod, 0);
+            AFTER(USEC(period), &toneGenerator, measureTone, 0);
+            break;  // Generate 1kHz tone
+        case 'D': {
+            int currentDeadline = SYNC(&toneGenerator, getUseDeadline, 0);
+            SYNC(&toneGenerator, setUseDeadline, !currentDeadline);
+            SYNC(&backgroundLoad, setUseDeadlineForLoad, !currentDeadline);
+            break;
+        }
+        case 'K': {
+            int key = num;   // Brother John periods
+            getPeriodsByChangingKey(&sci0, key);       // Get periods by changing key
+            break;
+        }
+        case 'q': // Quit to mode selection
+            self->currentMode = DEFAULT;
+            print(&sci0, "\n%s\n", modeInfo[DEFAULT].menuPrompt);
+            break;
+        default:
+            threeHistory(self->request, &storageForThreeHistory, c);
             break;
     }
 }
@@ -306,6 +302,7 @@ void sendCANMessage(App *self, int can, char c) {
     msg.msgId = 1;
     msg.nodeId = 1;
     int length = 0;
+
     if (can != INT_MIN) {
         // why 7? because the length of a buffer in CAN message is just 8 bytes;
         for (int i = 0; i < 7; i++) {
@@ -318,7 +315,12 @@ void sendCANMessage(App *self, int can, char c) {
     }
 
     msg.buff[length] = c;
-    msg.length = length++;
+    msg.buff[length+1] = '\0';
+    length = length + 2;
+    msg.length = length;
+
+    print(&sci0, "%s", msg.buff);
+
     CAN_SEND(&can0, &msg);
 }
 
@@ -357,8 +359,13 @@ void reader(App *self, int c) {
         if (c == '-' || (c <= '9' && c>= '0')) {
             self->request->inputBuffer[self->request->inputBufferIndex++] = c;
         } else {
-            num = getRequestNumFromBuffer(self);
-            sendCANMessage(self, num, c);
+            if(c == 'k' || c == 'o' || c == 'v' || c == 'K') {
+                num = getRequestNumFromBuffer(self);
+                sendCANMessage(self, num, c);
+            } else {
+                sendCANMessage(self, num, c);
+            }
+            
         }
 
     }
@@ -376,18 +383,23 @@ void receiver(App *self, int unused) {
     int num = INT_MIN;
     char c = ' ';
     if (msg.length != 0) {
-        if (msg.length == 1) {
+        if (msg.length == 2) {
             c = msg.buff[0];
         } else {
-            c = msg.buff[msg.length - 1];
+            c = msg.buff[msg.length - 2];
+
             char msgBuff[8] = {};
-            for (int i = 0; i < msg.length - 1; i++) {
+            for (int i = 0; i < msg.length - 2; i++) {
                 msgBuff[i] = msg.buff[i];
             }
-            msgBuff[msg.length - 1] = '\0';
+            msgBuff[msg.length - 2] = '\0';
             num = atoi(msgBuff);
         }
     }
+
+    print(&sci0, "Can msg command: %c\n", c);
+    print(&sci0, "Can msg num: %d\n", num);
+    print(&sci0, "Can msg received: %s\n", msg.buff);
 
     // only musician mode can be controlled.
     if (self->currentMode == DEFAULT) {
@@ -411,7 +423,7 @@ void receiver(App *self, int unused) {
 // Function to start the application
 void startApp(App *self, int arg) {
     initial();
-    CANMsg msg;
+    // CANMsg msg;
 
     CAN_INIT(&can0);
     SCI_INIT(&sci0);
@@ -422,16 +434,17 @@ void startApp(App *self, int arg) {
 	
 	// endMeasure(self->timeMeasure, 1);
 
-    msg.msgId = 1;
-    msg.nodeId = 1;
-    msg.length = 6;
-    msg.buff[0] = 'H';
-    msg.buff[1] = 'e';
-    msg.buff[2] = 'l';
-    msg.buff[3] = 'l';
-    msg.buff[4] = 'o';
-    msg.buff[5] = 0;
-    CAN_SEND(&can0, &msg);
+    // msg.msgId = 1;
+    // msg.nodeId = 1;
+    // msg.length = 6;
+    // msg.buff[0] = 'H';
+    // msg.buff[1] = 'e';
+    // msg.buff[2] = 'l';
+    // msg.buff[3] = 'l';
+    // msg.buff[4] = 'o';
+    // msg.buff[5] = 0;
+    // CAN_SEND(&can0, &msg);
+    // sendCANMessage(self, INT_MIN, 'x');
 }
 
 // Main function to install interrupts and start the TinyTimber framework
