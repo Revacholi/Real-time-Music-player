@@ -60,7 +60,7 @@ const ModeInfo modeInfo[] = {
         MUSICIAN,
         "Musician",
         "Musician Mode:\n"
-        "TODO: Add musician mode commands\n"
+        "Use CAN to control musicplayer\n"
         "1. q - Quit to mode selection\n"
     }
 };
@@ -274,7 +274,7 @@ void dispatch(App *self, int c, int num) {
         }
         case 'g': 
             int period = SYNC(&toneGenerator, getPeriod, 0);
-            AFTER(USEC(period), &toneGenerator, measureTone, 0);
+            AFTER(USEC(period), &toneGenerator, playTone, 0);
             break;  // Generate 1kHz tone
         case 'D': {
             int currentDeadline = SYNC(&toneGenerator, getUseDeadline, 0);
@@ -319,7 +319,7 @@ void sendCANMessage(App *self, int can, char c) {
     length = length + 2;
     msg.length = length;
 
-    print(&sci0, "%s", msg.buff);
+    //print(&sci0, "%s", msg.buff);
 
     CAN_SEND(&can0, &msg);
 }
@@ -397,9 +397,9 @@ void receiver(App *self, int unused) {
         }
     }
 
-    print(&sci0, "Can msg command: %c\n", c);
-    print(&sci0, "Can msg num: %d\n", num);
-    print(&sci0, "Can msg received: %s\n", msg.buff);
+    // print(&sci0, "Can msg command: %c\n", c);
+    // print(&sci0, "Can msg num: %d\n", num);
+    // print(&sci0, "Can msg received: %s\n", msg.buff);
 
     // only musician mode can be controlled.
     if (self->currentMode == DEFAULT) {
@@ -430,10 +430,6 @@ void startApp(App *self, int arg) {
 
     print(&sci0, "System Boot\n%s\n", modeInfo[DEFAULT].menuPrompt);
 
-	// startMeasure(self->timeMeasure, 1);
-	
-	// endMeasure(self->timeMeasure, 1);
-
     // msg.msgId = 1;
     // msg.nodeId = 1;
     // msg.length = 6;
@@ -444,7 +440,6 @@ void startApp(App *self, int arg) {
     // msg.buff[4] = 'o';
     // msg.buff[5] = 0;
     // CAN_SEND(&can0, &msg);
-    // sendCANMessage(self, INT_MIN, 'x');
 }
 
 // Main function to install interrupts and start the TinyTimber framework

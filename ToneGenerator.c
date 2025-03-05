@@ -6,6 +6,10 @@
 
 void playTone(ToneGenerator *self) {
 	int8_t *DAC_REG = (int8_t *)0x4000741C;
+
+	if (self->mutedByUser == 0) {
+		*DAC_REG = 0;
+	} else {
 		if (self->stop) {
 			return;
 		}
@@ -21,8 +25,9 @@ void playTone(ToneGenerator *self) {
         	//print(self->ser, "regValue: %d", *DAC_REG);
         	self->flag = !self->flag;
         }
-	  	Time dl = self->useDeadline ? USEC(100) : USEC(0);
-	  	SEND(USEC(self->period), dl, self, playTone, 0);
+	}
+	Time dl = self->useDeadline ? USEC(100) : USEC(0);
+	SEND(USEC(self->period), dl, self, playTone, 0);
 }
 
 void measureTone(ToneGenerator *self) {
