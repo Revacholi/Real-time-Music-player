@@ -17,6 +17,7 @@
 #include "BackgroundLoad.h"
 #include "MusicPlayer.h"
 #include "Common.h"
+#include "Button.h"
 
 // Enumeration for different modes
 enum Mode { DEFAULT = 0, CONDUCTOR = 1, MUSICIAN = 2 };
@@ -27,19 +28,6 @@ typedef struct {
     const char *name;
     const char *menuPrompt;
 } ModeInfo;
-
-typedef enum {
-    MOMENTARY_MODE,
-    HOLD_MODE
-} ButtonMode;
-
-typedef struct {
-    Time lastPressTime;
-    Time holdStartTime;
-    ButtonMode currentMode;
-    int debouncing;
-    Msg holdCheckMsg; 
-} ButtonState;
 
 // ModeInfo initialization
 const ModeInfo modeInfo[] = {
@@ -100,8 +88,6 @@ typedef struct {
     char c;
     Request *request;
     enum Mode currentMode;  
-    ButtonState btnState;
-    TimeMeasure btnTimer;
 } App;
 
 // Structure to hold storage information
@@ -124,55 +110,30 @@ void receiver(App*, int);
 void threeHistory(Request*, Storage*, int);
 void initial();
 int getFrequency(int key);
-void buttonCallback(App *self);
 
-// Initialize storage for three-history
-Storage storageForThreeHistory = { initObject(), {0}, 3, 0, 0, -9999, 9999, 0};
 
 // Initialize application state
 Request req = {{0}, 0};
 App app = { initObject(), 0, 'X', &req, DEFAULT };
 
-// Initialize SIO state
-SysIO sio = initSysIO(SIO_PORT0, &app, buttonCallback);
-
 // Initialize serial and CAN communication
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
 Can can0 = initCan(CAN_PORT0, &app, receiver);
 
-// Initialize timers and generators
+// Initialize SIO state
+Buttons button = { initObject(), PRESS_MOMENTARY, RELEASED, initTimer(), initTimer(), initTimer(), 0, {},  NULL, &sci0, &sio };
+SysIO sio = initSysIO(SIO_PORT0, &button, buttonCallback);
+
+Storage storageForThreeHistory = { initObject(), {0}, 3, 0, 0, -9999, 9999, 0};
 
 TimeMeasure timer1 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
 TimeMeasure timer2 = { initTimer(), 0, 0, 0, {0.0}, 0, 0.0, 0.0, &sci0 };
 ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 1, 0, 0, &sci0, &timer1};
 BackgroundLoad backgroundLoad = {initObject(), 1000, 500, 1, 0, 0, &sci0, &timer2};
-MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0, 0, &sci0, &toneGenerator};
+MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0, 0, &sci0, &toneGenerator, &sio};
 
-#define DEBOUNCE_TIME 100 
-#define HOLD_TIME     1000 
 
-void checkHoldMode(App *self, int arg) {
-    if (SIO_READ(&sio) == 0) { 
-        self->btnState.currentMode = HOLD_MODE;
-        print(&sci0, "Entered press-and-hold mode\n");
-    }
-}
 
-Time odd_press = 0;
-Time even_press = 0;
-Time diff_press = 0;
-int callFlag = 1;
-void buttonCallback(App *self) {
-    if (callFlag)
-        odd_press = CURRENT_OFFSET();
-    else{
-        even_press = CURRENT_OFFSET();
-        diff_press = even_press - odd_press;
-        if (diff_press < 0) diff_press = -diff_press;
-        print(&sci0, "diff_press: %ld\n", USEC_OF(diff_press));
-    }
-    callFlag = !callFlag;
-}
 
 // Function to calculate frequency based on key
 int getFrequency(int key) {

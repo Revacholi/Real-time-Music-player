@@ -18,9 +18,10 @@ typedef struct {
     
     Serial *sci0;
     ToneGenerator *toneGenerator;
-
-    
+    SysIO *sio;
 } MusicPlayer;
+
+extern MusicPlayer musicPlayer;
 
 void setStopMusic(MusicPlayer *self, int c);
 void startPlay(MusicPlayer *self);
