@@ -9,6 +9,7 @@
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
 #include "canTinyTimber.h"
+#include "sioTinyTimber.h"
 
 #include "Print.h"
 #include "TimeMeasure.h"
@@ -26,6 +27,19 @@ typedef struct {
     const char *name;
     const char *menuPrompt;
 } ModeInfo;
+
+typedef enum {
+    MOMENTARY_MODE,
+    HOLD_MODE
+} ButtonMode;
+
+typedef struct {
+    Time lastPressTime;
+    Time holdStartTime;
+    ButtonMode currentMode;
+    int debouncing;
+    Msg holdCheckMsg; 
+} ButtonState;
 
 // ModeInfo initialization
 const ModeInfo modeInfo[] = {
@@ -86,6 +100,8 @@ typedef struct {
     char c;
     Request *request;
     enum Mode currentMode;  
+    ButtonState btnState;
+    TimeMeasure btnTimer;
 } App;
 
 // Structure to hold storage information
@@ -108,6 +124,7 @@ void receiver(App*, int);
 void threeHistory(Request*, Storage*, int);
 void initial();
 int getFrequency(int key);
+void buttonCallback(App *self);
 
 // Initialize storage for three-history
 Storage storageForThreeHistory = { initObject(), {0}, 3, 0, 0, -9999, 9999, 0};
@@ -115,6 +132,9 @@ Storage storageForThreeHistory = { initObject(), {0}, 3, 0, 0, -9999, 9999, 0};
 // Initialize application state
 Request req = {{0}, 0};
 App app = { initObject(), 0, 'X', &req, DEFAULT };
+
+// Initialize SIO state
+SysIO sio = initSysIO(SIO_PORT0, &app, buttonCallback);
 
 // Initialize serial and CAN communication
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
@@ -128,6 +148,31 @@ ToneGenerator toneGenerator = {initObject(), 5, 1000, 500, 1, 1, 1, 0, 0, &sci0,
 BackgroundLoad backgroundLoad = {initObject(), 1000, 500, 1, 0, 0, &sci0, &timer2};
 MusicPlayer musicPlayer = {initObject(), 120, 500, 50, 0, 0, 0, &sci0, &toneGenerator};
 
+#define DEBOUNCE_TIME 100 
+#define HOLD_TIME     1000 
+
+void checkHoldMode(App *self, int arg) {
+    if (SIO_READ(&sio) == 0) { 
+        self->btnState.currentMode = HOLD_MODE;
+        print(&sci0, "Entered press-and-hold mode\n");
+    }
+}
+
+Time odd_press = 0;
+Time even_press = 0;
+Time diff_press = 0;
+int callFlag = 1;
+void buttonCallback(App *self) {
+    if (callFlag)
+        odd_press = CURRENT_OFFSET();
+    else{
+        even_press = CURRENT_OFFSET();
+        diff_press = even_press - odd_press;
+        if (diff_press < 0) diff_press = -diff_press;
+        print(&sci0, "diff_press: %ld\n", USEC_OF(diff_press));
+    }
+    callFlag = !callFlag;
+}
 
 // Function to calculate frequency based on key
 int getFrequency(int key) {
@@ -229,14 +274,21 @@ int getRequestNumFromBuffer(App *self) {
     return num;
 }
 
+int8_t flag = 0;
 // Function to dispatch commands based on current mode
 void dispatch(App *self, int c, int num) {
     switch(c) {
         case 'S': // stop music
             SEND((Time) 0, (Time) 0, &musicPlayer, stopPlay, 0);
+            flag = 0;
             break;
         case 'p': // play music
-            SEND((Time) 0, (Time) 0, &musicPlayer, startPlay, 0);
+            if(flag) {
+                SEND((Time) 0, (Time) 0, &musicPlayer, initIndex, 0);
+            } else {
+                SEND((Time) 0, (Time) 0, &musicPlayer, startPlay, 0);
+                flag = 1;
+            }
             break;
         case 'k': // change key
             //int key = getRequestNumFromBuffer(self);   
@@ -428,6 +480,9 @@ void startApp(App *self, int arg) {
     CAN_INIT(&can0);
     SCI_INIT(&sci0);
 
+    SIO_INIT(&sio);
+    SIO_TRIG(&sio, 0);
+
     print(&sci0, "System Boot\n%s\n", modeInfo[DEFAULT].menuPrompt);
 
     // msg.msgId = 1;
@@ -446,6 +501,8 @@ void startApp(App *self, int arg) {
 int main() {
     INSTALL(&sci0, sci_interrupt, SCI_IRQ0);
     INSTALL(&can0, can_interrupt, CAN_IRQ0);
+    INSTALL(&sio, sio_interrupt, SIO_IRQ0);
+
     TINYTIMBER(&app, startApp, 0);
     return 0;
 }

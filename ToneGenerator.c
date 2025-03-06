@@ -27,7 +27,10 @@ void playTone(ToneGenerator *self) {
         }
 	}
 	Time dl = self->useDeadline ? USEC(100) : USEC(0);
-	SEND(USEC(self->period), dl, self, playTone, 0);
+	if (!self->stop) {
+		SEND(USEC(self->period), dl, self, playTone, 0);
+	}
+	
 }
 
 void measureTone(ToneGenerator *self) {

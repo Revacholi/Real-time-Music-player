@@ -30,4 +30,5 @@ void setBasicBeatLength(MusicPlayer *self, int c);
 void setSilence(MusicPlayer *self, int c);
 void setKey(MusicPlayer *self, int c);
 void stopPlay(MusicPlayer *self);
+void initIndex(MusicPlayer *self);
 #endif
