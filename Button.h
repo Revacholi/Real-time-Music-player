@@ -41,8 +41,10 @@ typedef struct {
 
 
 void buttonCallback(Buttons *self);
+void buttonAnotherCallback(Buttons *self);
 void clearIntervalHistory(Buttons*);
 int compareIntervalHistory(Buttons*, int);
+int compareIntervalHistoryAnotherVersion(Buttons*, int);
 void checkPressAndHold(Buttons *self);
 
 

@@ -7,12 +7,12 @@ void buttonAnotherCallback(Buttons *self) {
             if (currentStatus == PRESSED) {
                 // 1. get delta between current press event and last press event. 
                 if (self->hitFirst == 0) {
-                    T_RESET(self->timer);
+                    T_RESET(&self->timer);
                     SIO_TRIG(&sio, 1);
                     self->hitFirst = 1;
                     return;
                 }
-                Time timer_ = T_SAMPLE(self->timer);
+                Time timer_ = T_SAMPLE(&self->timer);
                 int delta = MSEC_OF(timer_);
                 // 消抖
                 if (delta < 100) {
@@ -47,19 +47,19 @@ void buttonAnotherCallback(Buttons *self) {
                 SIO_TRIG(&sio, 1);
                 // 4. change baseline.
                 // self->deltaBetweenPressAndPress = delta;
-                T_RESET(self->timer);
+                T_RESET(&self->timer);
 
 
             } else if (currentStatus == RELEASED) {
                 // 1. get delta between current release event and last press event. 
-                Timer timer_ = T_SAMPLE(self->timer);
+                Time timer_ = T_SAMPLE(&self->timer);
                 int delta = MSEC_OF(timer_);
 
                 // 2. if more than 1s, enter into PRESS_AND_HOLD mode. if not could probaboly set bpm here. TODO
                 if (delta >= 1000) {
                     // PRESS_AND_HOLD;
                     print(self->ser, "Entered PRESS_AND_HOLD MODE\n");
-                    print(self->ser, "Press and hold duration time is : %d\n ", self->deltaBetweenPressAndRelease);
+                    print(self->ser, "Press and hold duration time is : %d\n ", delta);
                     clearIntervalHistory(self);
                     
                 }
@@ -79,7 +79,7 @@ int compareIntervalHistoryAnotherVersion(Buttons *self, int interval){
     int tolerance = 100; // max diff 100 ms
 
     for (int i = 0; i < self->index; i++) {
-        if (interval - self->timeBuffer[i] > 100 || self->timeBuffer[i] - interval > 100) {
+        if (interval - self->timeBuffer[i] > tolerance || self->timeBuffer[i] - interval > tolerance) {
             return 1;
         } 
     }
