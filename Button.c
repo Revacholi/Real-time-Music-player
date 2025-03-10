@@ -1,5 +1,93 @@
 #include "Button.h"
 
+
+void buttonAnotherCallback(Buttons *self) {
+    int currentStatus = SIO_READ(self->sio);
+
+            if (currentStatus == PRESSED) {
+                // 1. get delta between current press event and last press event. 
+                if (self->hitFirst == 0) {
+                    T_RESET(self->timer);
+                    SIO_TRIG(&sio, 1);
+                    self->hitFirst = 1;
+                    return;
+                }
+                Time timer_ = T_SAMPLE(self->timer);
+                int delta = MSEC_OF(timer_);
+                // 消抖
+                if (delta < 100) {
+                    return;
+                }
+
+                // 2. determine if it is valid(like range, compare to histories). 
+                // 2.1 range check
+                if (delta >= 2000 || delta <= 200) {
+                    clearIntervalHistory(self);
+                    print(self->ser, "Interval too long\n");
+                    return;
+                }
+                // 2.2 compare with histories
+                if (compareIntervalHistoryAnotherVersion(self, delta)) {
+                    clearIntervalHistory(self);
+                    print(self->ser, "Interval differs too much\n");
+                    return;
+                }
+                //      - if valid, write into history, and probaboly set bpm here. TODO
+                self->timeBuffer[self->index] = delta;
+                // TODO: 是否在这里设置bpm，需求需要明确一个点才能决定：就是当最后一下tap进入了press and hold模式时，是否能设置bpm。暂时在这里先设置bpm
+                if (self->index == MAX_BURST - 1) {
+                    // set bpm
+                    int average = (self->timeBuffer[0] + self->timeBuffer[1] + self->timeBuffer[2]) / 3;
+                    SYNC(&musicPlayer, setBPM, 60000 / average);
+                    print(self->ser, "BPM set to %d\n", 60000 / average);
+                }
+                self->index = self->index == MAX_BURST - 1 ? 0 : self->index + 1;
+
+                // 3. change callback trigger. 让释放接收回调
+                SIO_TRIG(&sio, 1);
+                // 4. change baseline.
+                // self->deltaBetweenPressAndPress = delta;
+                T_RESET(self->timer);
+
+
+            } else if (currentStatus == RELEASED) {
+                // 1. get delta between current release event and last press event. 
+                Timer timer_ = T_SAMPLE(self->timer);
+                int delta = MSEC_OF(timer_);
+
+                // 2. if more than 1s, enter into PRESS_AND_HOLD mode. if not could probaboly set bpm here. TODO
+                if (delta >= 1000) {
+                    // PRESS_AND_HOLD;
+                    print(self->ser, "Entered PRESS_AND_HOLD MODE\n");
+                    print(self->ser, "Press and hold duration time is : %d\n ", self->deltaBetweenPressAndRelease);
+                    clearIntervalHistory(self);
+                    
+                }
+                if (delta >= 2000) {
+                    // 回到默认120bpm
+                    SYNC(&musicPlayer, setBPM, 120);
+                    print(self->ser, "BPM reset to %d\n", 120);
+                }
+                // 3. change callback trigger. 让下一轮的按下接收回调
+                SIO_TRIG(&sio, 0);
+                // self->deltaBetweenPressAndRelease = delta;
+            }
+}
+
+
+int compareIntervalHistoryAnotherVersion(Buttons *self, int interval){
+    int tolerance = 100; // max diff 100 ms
+
+    for (int i = 0; i < self->index; i++) {
+        if (interval - self->timeBuffer[i] > 100 || self->timeBuffer[i] - interval > 100) {
+            return 1;
+        } 
+    }
+    return 0;
+}
+
+
+
 void buttonCallback(Buttons *self) {    
     int currentStatus = SIO_READ(self->sio);
 
@@ -27,7 +115,7 @@ void buttonCallback(Buttons *self) {
                 if ((msInterArrival > 2000) && 0) {
                     clearIntervalHistory(self);
                     print(self->ser, "Interval too long\n");
-                }
+                }   
                 else if(compareIntervalHistory(self, msInterArrival) || 0) {
                     print(self->ser, "Interval differs too much\n");
                     clearIntervalHistory(self);
@@ -100,6 +188,7 @@ void buttonCallback(Buttons *self) {
 }
 
 void clearIntervalHistory(Buttons *self){
+    self->hitFirst = 0;
     for (int i = 0; i < MAX_BURST; i++){
         self->timeBuffer[i] = 0;
     }

@@ -30,6 +30,11 @@ typedef struct {
     int index;
     int timeBuffer[MAX_BURST]; // store the history of PRESS interval (ms)
     Msg abortMessage; 
+
+    int hitFirst;
+    Timer timer;
+    // int deltaBetweenPressAndRelease;
+    // int deltaBetweenPressAndPress;
     Serial *ser;
     SysIO *sio;
 } Buttons;

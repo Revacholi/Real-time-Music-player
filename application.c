@@ -121,7 +121,7 @@ Serial sci0 = initSerial(SCI_PORT0, &app, reader);
 Can can0 = initCan(CAN_PORT0, &app, receiver);
 
 // Initialize SIO state
-Buttons button = { initObject(), PRESS_MOMENTARY, RELEASED, initTimer(), initTimer(), initTimer(), 0, {},  NULL, &sci0, &sio };
+Buttons button = { initObject(), PRESS_MOMENTARY, RELEASED, initTimer(), initTimer(), initTimer(), 0, {},  NULL, 1, initTimer(), &sci0, &sio };
 SysIO sio = initSysIO(SIO_PORT0, &button, buttonCallback);
 
 Storage storageForThreeHistory = { initObject(), {0}, 3, 0, 0, -9999, 9999, 0};
