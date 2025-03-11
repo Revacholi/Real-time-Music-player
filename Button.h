@@ -10,7 +10,7 @@
 
 #define RELEASED 1
 #define PRESSED  0
-#define MAX_BURST 3
+#define MAX 3
 
 #define BUTTON_BG_DEADLINE    USEC(800)
 #define BUTTON_BG_PERIODICITY USEC(1300)
@@ -28,7 +28,7 @@ typedef struct {
     Timer timerRelease;
     Timer timerPress;
     int index;
-    int timeBuffer[MAX_BURST]; // store the history of PRESS interval (ms)
+    int timeBuffer[MAX]; // store the history of PRESS interval (ms)
     Msg abortMessage; 
 
     int hitFirst;

@@ -6,6 +6,7 @@
 #include "Print.h"
 #include "ToneGenerator.h"
 #include "Common.h"
+#include "sioTinyTimber.h"
 
 typedef struct {
     Object super;

@@ -42,23 +42,23 @@ void play(MusicPlayer *self) {
     int beatLength = self->basicBeatLength * brotherJohnBeatUnit[self->index];
 
     // lcd blink
-    if (brotherJohnBeatUnit(self->index) == 1) { // a
+    if (brotherJohnBeatUnit[self->index] == 1) { // a
         // lit once, toggle once
-        SEND((Time)0, (Time) 0, self->sio, SIO_WRITE, 0);
-        SEND(MSEC(beatLength/2), 0, self, toggleLED, 0);
-    } else if (brotherJohnBeatUnit(self->index) == 2) { // b
+        SEND((Time)0, (Time) 0, self->sio, sio_write, 0);
+        SEND(MSEC(beatLength/2), 0, self->sio, sio_toggle, 0);
+    } else if (brotherJohnBeatUnit[self->index] == 2) { // b
         // lit once, toggle three times
-        SEND((Time)0, (Time) 0, self->sio, SIO_WRITE, 0);
-        SEND(MSEC(beatLength/4), 0, self, toggleLED, 0);
-        SEND(MSEC(beatLength/2), 0, self, toggleLED, 0);
-        SEND(MSEC(3 * beatLength/4), 0, self, toggleLED, 0);
-    } else if (brotherJohnBeatUnit(self->index) == 0.5) { // c
+        SEND((Time)0, (Time) 0, self->sio, sio_write, 0);
+        SEND(MSEC(beatLength/4), 0, self->sio, sio_toggle, 0);
+        SEND(MSEC(beatLength/2), 0, self->sio, sio_toggle, 0);
+        SEND(MSEC(3 * beatLength/4), 0, self->sio, sio_toggle, 0);
+    } else if (brotherJohnBeatUnit[self->index] == 0.5) { // c
         // just toggle once.
-        SEND((Time) 0, (Time) 0, self, toggleLED, 0);
+        SEND((Time) 0, (Time) 0, self->sio, sio_toggle, 0);
     }
     
 
-    // SIO_WRITE(self->sio, 0);  // LED on
+    // SIO_WRITE(self->sio, 0);  
     // set period to tone generator.
     SEND(0, 0, self->toneGenerator, setPeriod, period); 
     // unmute immediately in order to play sound.
@@ -90,8 +90,8 @@ void stopPlay(MusicPlayer *self) {
 
 
 void setBPM(MusicPlayer *self, int c) {
-    if (c > 240) c = 240;
-    if (c < 60) c = 60;
+    if (c > 300) c = 300;
+    if (c < 30) c = 30;
     self->tempo = c;
     // get beat length
     int length = 60 * 1000 / self->tempo;
